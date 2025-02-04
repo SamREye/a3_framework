@@ -1,0 +1,6 @@
+__pycache__
+venv/
+a3.log
+.env
+.cursorrules.md
+a3_framework.egg-info/

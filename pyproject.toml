@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "a3-framework"
+version = "0.1.0"
+description = "A Python library implementing the A³ (Authority, Agent, Auditor) workflow."
+authors = [
+    { name = "Samuel Bourque", email = "me@sambourque.com" }
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/samreye/a3-framework"
+"Documentation" = "https://github.com/samreye/a3-framework/docs"
+"Source" = "https://github.com/samreye/a3-framework"
+"Tracker" = "https://github.com/samreye/a3-framework/issues"
+
+[project.dependencies]
+openai = "^0.27.0"
+pydantic = "^1.10.2"
+
+[tool.setuptools.packages.find]
+where = ["a3_framework"] 
