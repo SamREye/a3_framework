@@ -15,7 +15,7 @@ A³ (Authority, Agent, Auditor) is a Python library designed to facilitate a str
 To install the A³ framework, ensure you have Python 3.7 or later, and run:
 
 ```bash
-pip install git+https://github.com/samreye/a3-framework.git
+pip install git+https://github.com/samreye/a3_framework.git
 ```
 
 ## Usage
