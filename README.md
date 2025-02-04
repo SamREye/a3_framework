@@ -84,7 +84,6 @@ For questions or support, please contact Samuel Bourque at [me@sambourque.com](m
 
 ## Links
 
-- [Homepage](https://github.com/samreye/a3-framework)
-- [Documentation](https://github.com/samreye/a3-framework/docs)
-- [Source](https://github.com/samreye/a3-framework)
-- [Issue Tracker](https://github.com/samreye/a3-framework/issues) 
+- [Homepage](https://github.com/samreye/a3_framework)
+- [Source](https://github.com/samreye/a3_framework)
+- [Issue Tracker](https://github.com/samreye/a3_framework/issues) 
