@@ -4,6 +4,8 @@
 
 A³ (Authority, Agent, Auditor) is a Python library designed to facilitate a structured workflow for task management and evaluation using AI models. The framework integrates with OpenAI's API to perform text-based tasks, providing a seamless Authority → Agent → Auditor loop.
 
+Read the [manifesto](https://agentdeployer.com/blog/a3-manifesto)
+
 ## Features
 
 - **OpenAI Integration**: Utilizes OpenAI's API for generating and evaluating text.
