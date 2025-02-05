@@ -9,12 +9,10 @@ if os.getenv("OPENAI_API_KEY") is None:
     raise ValueError("OPENAI_API_KEY is not set")
 openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def generate_function_schemas(module, usable_tools):
+def generate_function_schemas(module):
     functions = []
     for name, func in inspect.getmembers(module, inspect.isfunction):
         if func.__module__ == module.__name__:
-            if name not in usable_tools:
-                continue
             params = inspect.signature(func).parameters
             properties = {param: {"type": "string"} for param in params}
             function = {
@@ -34,64 +32,66 @@ def generate_function_schemas(module, usable_tools):
             functions.append(function)
     return functions
 
-# def apply_tools(tool_message):
-#     messages = []
-#     formatted_tool_message = {
-#         "role": "assistant",
-#         "content": None,
-#         "tool_calls": [
-#             {
-#                 "id": tool_call.id,
-#                 "function": {
-#                     "name": tool_call.function.name,
-#                     "arguments": tool_call.function.arguments
-#                 },
-#                 "type": "function"
-#             } for tool_call in tool_message.tool_calls
-#         ]
-#     }
-#     messages.append(formatted_tool_message)
-#     tool_responses = []
-#     for tool_call in tool_message.tool_calls:
-#         tool_id = tool_call.id
-#         function_name = tool_call.function.name
-#         arguments = tool_call.function.arguments
-#         args = json.loads(arguments)
-#         tool_response = getattr(tools, function_name)(**args)
-#         tool_msg = {
-#             "tool_call_id": tool_id,
-#             "role": "tool",
-#             "content": json.dumps(tool_response)
-#         }
-#         tool_responses.append(tool_msg)
-#         messages.append(tool_msg)
-#     return messages
+def apply_tools(tool_message, toolkit_module):
+    messages = []
+    formatted_tool_message = {
+        "role": "assistant",
+        "content": None,
+        "tool_calls": [
+            {
+                "id": tool_call.id,
+                "function": {
+                    "name": tool_call.function.name,
+                    "arguments": tool_call.function.arguments
+                },
+                "type": "function"
+            } for tool_call in tool_message.tool_calls
+        ]
+    }
+    messages.append(formatted_tool_message)
+    tool_responses = []
+    for tool_call in tool_message.tool_calls:
+        tool_id = tool_call.id
+        function_name = tool_call.function.name
+        arguments = tool_call.function.arguments
+        args = json.loads(arguments)
+        log_event("INFO", f"Calling tool: {function_name} with arguments: {args}")
+        tool_response = getattr(toolkit_module, function_name)(**args)
+        tool_msg = {
+            "tool_call_id": tool_id,
+            "role": "tool",
+            "content": json.dumps(tool_response)
+        }
+        tool_responses.append(tool_msg)
+        messages.append(tool_msg)
+    return messages
 
-def call_llm(messages, *, model='gpt-4o', usable_tools=[], response_format=None):
+def call_llm(messages, *, model='gpt-4o', response_format=None, toolkit_module=None):
     log_event("INFO", f"Calling LLM: {messages}")
-    # schemas = generate_function_schemas(tools, usable_tools)
+    schemas = []
+    if toolkit_module is not None:
+        schemas = generate_function_schemas(toolkit_module)
     response = None
-    # if len(schemas) > 0 and response_format is not None:
-    #     try:
-    #         response = openai_client.beta.chat.completions.parse(
-    #             model=model,
-    #             messages=messages,
-    #             tools=schemas,
-    #             response_format=response_format)
-    #     except Exception as e:
-    #         log_event("ERROR", f"Error: {e}")
-    #         raise e
-    # elif len(schemas) > 0 and response_format is None:
-    #     try:
-    #         response = openai_client.beta.chat.completions.parse(
-    #             model=model,
-    #             messages=messages,
-    #             tools=schemas)
-    #     except Exception as e:
-    #         log_event("ERROR", f"Error: {e}")
-    #         raise e
-    # el
-    if response_format is not None:
+    if len(schemas) > 0 and response_format is not None:
+        try:
+            response = openai_client.beta.chat.completions.parse(
+                model=model,
+                messages=messages,
+                tools=schemas,
+                response_format=response_format)
+        except Exception as e:
+            log_event("ERROR", f"Error: {e}")
+            raise e
+    elif len(schemas) > 0 and response_format is None:
+        try:
+            response = openai_client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=schemas)
+        except Exception as e:
+            log_event("ERROR", f"Error: {e}")
+            raise e
+    elif response_format is not None:
         try:
             response = openai_client.beta.chat.completions.parse(
                 model=model,
@@ -102,7 +102,7 @@ def call_llm(messages, *, model='gpt-4o', usable_tools=[], response_format=None)
             raise e
     elif response_format is None:
         try:
-            response = openai_client.beta.chat.completions.parse(
+            response = openai_client.chat.completions.create(
                 model=model,
                 messages=messages)
         except Exception as e:
@@ -114,13 +114,15 @@ def call_llm(messages, *, model='gpt-4o', usable_tools=[], response_format=None)
     log_event("INFO", f"Response: {response}")
     return response
 
-# def llm_wrapper(formatted_message, *, model='gpt-4o', usable_tools=[], response_format=None):
-#     messages = [formatted_message]
-#     response = call_llm(messages, model, usable_tools, response_format)
-#     if response.choices[0].finish_reason == "tool_calls":
-#         messages += apply_tools(response.choices[0].message)
-#         return llm_wrapper(messages, response_format)
-#     answer = response.choices[0].message.content
-#     formatted_response = {"role": "assistant", "content": answer}
-#     messages.append(formatted_response)
-#     return messages
+def llm_with_tools_wrapper(messages, *, model='gpt-4o', toolkit_module=None, response_format=None):
+    response = call_llm(messages, model=model, toolkit_module=toolkit_module, response_format=response_format)
+    if response.choices[0].finish_reason == "tool_calls":
+        messages += apply_tools(response.choices[0].message, toolkit_module)
+        return llm_with_tools_wrapper(messages, model=model, response_format=response_format, toolkit_module=toolkit_module)
+    answer = response.choices[0].message.content
+    formatted_response = {"role": "assistant", "content": answer}
+    messages.append(formatted_response)
+    if response_format is not None:
+        myobj = response_format(**json.loads(answer))
+        return myobj
+    return messages

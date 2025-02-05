@@ -1,4 +1,4 @@
-from .llm_wrapper import call_llm
+from .llm_wrapper import llm_with_tools_wrapper
 from pydantic import BaseModel
 
 from enum import Enum
@@ -12,13 +12,14 @@ class AuditorFeedback(BaseModel):
     discrepancies: list[str]
 
 class A3Auditor:
-    def __init__(self, model='gpt-4o'):
+    def __init__(self, model='gpt-4o', toolkit_module=None):
         self.model = model
         self.base_prompt = {
             "role": "system",
             "content": "You are an auditor. You are given an output and you need to evaluate it according to the standard. You need to return a verdict and a list of reasons."
         }
         self.standard_session = [self.base_prompt]
+        self.toolkit_module = toolkit_module
 
     def set_standard(self, standard):
         self.standard = standard
@@ -26,7 +27,7 @@ class A3Auditor:
             "role": "user",
             "content": f"Here's the standard you need to evaluate against:\n\n[STANDARD]\n{self.standard}\n[/STANDARD]. Do you have any clarifying questions? Is your responsibility clear?"
         })
-        response = call_llm(self.standard_session, model=self.model, response_format=StandardAssignment)
+        response = llm_with_tools_wrapper(self.standard_session, model=self.model, response_format=StandardAssignment, toolkit_module=self.toolkit_module)
         return response
 
     def evaluate(self, output):
@@ -36,7 +37,10 @@ class A3Auditor:
                 "role": "system",
                 "content": f"Standard: {self.standard}"
             },
-            output
+            {
+                "role": "user",
+                "content": f"Output: {output}"
+            }
         ]
-        response = call_llm(self.standard_session, model=self.model, response_format=AuditorFeedback)
+        response = llm_with_tools_wrapper(messages, model=self.model, response_format=AuditorFeedback, toolkit_module=self.toolkit_module)
         return response
