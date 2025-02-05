@@ -13,6 +13,9 @@ def generate_function_schemas(module):
     functions = []
     for name, func in inspect.getmembers(module, inspect.isfunction):
         if func.__module__ == module.__name__:
+            # Only if function name starts with "tool_"
+            if not name.startswith("tool_"):
+                continue
             params = inspect.signature(func).parameters
             properties = {param: {"type": "string"} for param in params}
             function = {
